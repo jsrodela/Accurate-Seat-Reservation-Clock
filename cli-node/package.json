@@ -1,0 +1,11 @@
+{
+  "name": "russel-clock-cli",
+  "version": "1.0.0",
+  "type": "module",
+  "bin": "index.js",
+  "scripts": {
+    "build:win": "pkg -t node20-win-x64 --compress Brotli -o dist/RusselClockCLI.exe index.js"
+  },
+  "dependencies": {},
+  "devDependencies": { "pkg": "^5.8.1" }
+}
