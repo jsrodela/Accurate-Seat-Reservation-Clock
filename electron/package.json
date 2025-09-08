@@ -1,14 +1,15 @@
 {
   "name": "accurate-seat-reservation-clock",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
+  "description": "Accurate Seat Reservation Clock - 서버 시간 동기화 기반 예약 도우미",
+  "author": "Your Name",
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
     "build": "electron-builder --win portable",
     "type": "commonjs"
   },
-  "dependencies": {},
   "devDependencies": {
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3"

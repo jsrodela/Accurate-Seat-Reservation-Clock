@@ -1,4 +1,2 @@
 const { contextBridge } = require('electron');
-contextBridge.exposeInMainWorld('env', {
-  version: '0.2.0'
-});
+contextBridge.exposeInMainWorld('env', { version: '0.3.0' });
