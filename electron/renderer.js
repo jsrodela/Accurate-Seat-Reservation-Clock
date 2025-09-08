@@ -1,9 +1,10 @@
 // ====== Config ======
-const TARGET_URL = "https://myrussel.megastudy.net/reserve/reserve_list.asp";
+let targetUrl = localStorage.getItem('reserve_target_url')
+  || "https://myrussel.megastudy.net/reserve/reserve_list.asp"; // 기본값
 
 // ====== State ======
-const samples = [];             // keep recent samples
-const MAX_SAMPLES = 240;        // ~4 minutes at 1 Hz
+const samples = [];
+const MAX_SAMPLES = 240;
 let bestRTT = Number.POSITIVE_INFINITY;
 let bestOffset = 0;
 let timer = null;
@@ -52,13 +53,12 @@ function pstdev(arr) {
   return Math.sqrt(varp);
 }
 
-// ====== Sampling ======
+// ====== Sampling (targetUrl 사용하도록 변경) ======
 async function headOnce(url){
   const t0 = performance.now();
   const r = await fetch(url, {
     method: 'HEAD',
     cache: 'no-store',
-    // 일부 서버가 UA 없으면 차단할 수 있어 헤더 추가(선택)
     headers: { 'User-Agent': 'ReserveClock/0.2 (Electron)' }
   });
   const t3 = performance.now();
@@ -66,28 +66,23 @@ async function headOnce(url){
   const rtt = t3 - t0;
   if (!date) return { ok:false, rtt, dateHdr:"" };
 
-  const serverEpoch = new Date(date).getTime(); // ms
-  // local midpoint (ms on epoch)
+  const serverEpoch = new Date(date).getTime();
   const midLocal = performance.timeOrigin + (t0 + t3)/2;
-  const offset = serverEpoch - midLocal; // server - local
+  const offset = serverEpoch - midLocal;
   return { ok:true, rtt, offset, dateHdr:date, serverEpoch };
 }
 
 async function sampleTick(){
   try{
-    const s = await headOnce(TARGET_URL);
+    const s = await headOnce(targetUrl);   // ← 여기
     if (s.ok) {
       if (samples.length >= MAX_SAMPLES) samples.shift();
       samples.push(s);
-
-      if (s.rtt < bestRTT) {
-        bestRTT = s.rtt;
-        bestOffset = s.offset;
-      }
+      if (s.rtt < bestRTT) { bestRTT = s.rtt; bestOffset = s.offset; }
     }
     render();
   } catch (e) {
-    // 네트워크 실패 시도중: 카운트/표시는 그대로, 다음 틱으로
+    // 네트워크 실패 시 무시하고 다음 틱
   }
 }
 
@@ -159,37 +154,52 @@ function computeClickMs(stats, cfg){
   return { clickMs: clickLocal, eta };
 }
 
-// ====== UI ======
-const $ = (id)=>document.getElementById(id);
-
-function render(){
-  const st = getStats();
-  $('local').textContent  = fmtTime(st.nowLocal);
-  $('server').textContent = st.nowServer ? fmtTime(st.nowServer) : "--:--:--.---";
-  $('offset').textContent = (st.offset!=null) ? `${Math.round(st.offset)} ms` : "-- ms";
-  $('rtt').textContent    = (st.rttMean!=null && st.bestRTT!=null) ? `${Math.round(st.rttMean)} / ${Math.round(st.bestRTT)} ms` : "-- / -- ms";
-  $('offstd').textContent = (st.offsetStdev!=null) ? `${Math.round(st.offsetStdev)} ms` : "-- ms";
-  $('rttstd').textContent = (st.rttStdev!=null) ? `${Math.round(st.rttStdev)} ms` : "-- ms";
-  $('count').textContent  = st.count;
-  $('datehdr').textContent= st.lastDate || "—";
-  $('samplestat').textContent = st.count ? `samples: ${st.count}` : 'sampling…';
-
-  const { clickMs, eta } = computeClickMs(st, cfg);
-  $('clicktime').textContent = clickMs ? fmtTime(clickMs) : "—";
-  $('countdown').textContent = eta!=null ? fmtDur(eta) : "—";
-  $('countdown').className = "countdown " + (
-    eta==null ? "" : (eta<=0 ? "green blink" : (eta<1500 ? "warn" : ""))
-  );
-}
-
+// ====== UI 바인딩 (추가됨) ======
 function bind(){
-  $('save').onclick = () => {
-    cfg.target_mode = $('mode').value;
-    cfg.target_iso  = $('target').value;
-    cfg.prefire_ms  = parseInt($('prefire').value || '120', 10);
-    cfg.use_best_half_rtt = $('halfrtt').checked;
+  // 기존 예약 타깃 저장 버튼
+  document.getElementById('save').onclick = () => {
+    cfg.target_mode = document.getElementById('mode').value;
+    cfg.target_iso  = document.getElementById('target').value;
+    cfg.prefire_ms  = parseInt(document.getElementById('prefire').value || '120', 10);
+    cfg.use_best_half_rtt = document.getElementById('halfrtt').checked;
     render();
   };
+
+  // ★ 새로 추가: URL 설정
+  const urlInput = document.getElementById('url');
+  const setBtn   = document.getElementById('seturl');
+
+  // 초기 표시
+  urlInput.value = targetUrl;
+  document.getElementById('currenturl').textContent = targetUrl;
+
+  function applyUrl() {
+    const u = urlInput.value.trim();
+    if (!u) return;
+    try {
+      // 기본 검증: 프로토콜 포함 여부
+      const parsed = new URL(u);
+      if (!/^https?:$/i.test(parsed.protocol)) throw new Error('http/https만 지원');
+      targetUrl = parsed.toString();
+
+      // 상태 초기화
+      samples.length = 0;
+      bestRTT = Number.POSITIVE_INFINITY;
+      bestOffset = 0;
+
+      // 저장 및 표시
+      localStorage.setItem('reserve_target_url', targetUrl);
+      document.getElementById('currenturl').textContent = targetUrl;
+      render();
+    } catch (e) {
+      alert('유효한 URL을 입력하세요 (http/https).');
+    }
+  }
+
+  setBtn.onclick = applyUrl;
+  urlInput.addEventListener('keypress', (ev) => {
+    if (ev.key === 'Enter') applyUrl();
+  });
 }
 
 // ====== Start ======

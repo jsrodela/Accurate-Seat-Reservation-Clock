@@ -27,7 +27,16 @@
 <body>
   <div class="wrap">
     <h1>Accurate Seat Reservation Clock <span class="pill" id="samplestat">idle</span></h1>
-
+    <div class="card" style="margin-bottom:16px">
+      <div class="label">Target URL (HTTP Date 헤더를 반환하는 엔드포인트)</div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <input id="url" style="flex:1; min-width:300px"
+               placeholder="https://example.com/path"
+               value="" />
+        <button id="seturl">Set URL</button>
+        <span class="pill" id="currenturl">—</span>
+      </div>
+    </div>
     <div class="grid">
       <div class="card">
         <div class="label">Local Time (Your PC)</div>
