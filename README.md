@@ -29,38 +29,7 @@ local_click = target_server
 cd electron
 npm i
 npm run dev      # 개발 실행
-npm run build    # 설치파일 dist/ 에 생성
 ```
-
-### 2) Node.js CLI (가볍게 사용)
-
-```bash
-cd cli-node
-npm i
-node index.js --url https://github.com/jsrodela/Accurate-Seat-Reservation-Clock \
-  --mode local --target "2025-09-08 21:00:00" --prefire 120 --halfrtt
-```
-
-윈도우 단일 실행파일:
-
-```bash
-npm run build:win   # dist/RusselClockCLI.exe 생성
-```
-
-### 3) C 버전 (libcurl, 네이티브)
-
-```bash
-cd cli-c
-mkdir build && cd build
-cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --config Release
-
-./russel_clock_c.exe "https://github.com/jsrodela/Accurate-Seat-Reservation-Clock" local "2025-09-08 21:00:00" 120 1
-```
-
----
-
-## 실행 옵션
 
 공통 CLI 인자:
 

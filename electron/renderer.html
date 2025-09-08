@@ -1,47 +1,77 @@
 <!doctype html>
-<meta charset="utf-8">
-<title>Russel Reservation Clock</title>
-<style>
-  body{font-family:ui-monospace,Consolas,monospace;background:#0b1020;color:#e7ecff;margin:0}
-  .wrap{max-width:980px;margin:24px auto;padding:0 16px}
-  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
-  .card{background:#131a33;border:1px solid #1f2a52;border-radius:12px;padding:16px}
-  .label{color:#aab7ff;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
-  .big{font-size:42px;letter-spacing:1px}
-  .countdown{font-size:56px;font-weight:800}
-  input,select,button{background:#0b1020;color:#e7ecff;border:1px solid #324076;border-radius:8px;padding:8px 10px}
-  button{background:#2a3a78;border:0;cursor:pointer}
-  @media(max-width:780px){.grid{grid-template-columns:1fr}.big{font-size:32px}.countdown{font-size:40px}}
-</style>
-<div class="wrap">
-  <h1>Russel Reservation Clock</h1>
-  <div class="grid">
-    <div class="card">
-      <div class="label">Local Time</div>
-      <div id="local" class="big">--:--:--.---</div>
-      <div class="label" style="margin-top:8px">Server Time (Estimated)</div>
-      <div id="server" class="big">--:--:--.---</div>
-      <div style="margin-top:10px">Offset: <b id="offset">-- ms</b> | RTT avg/best: <b id="rtt">--/-- ms</b></div>
-      <div style="margin-top:6px">Offset σ: <b id="offstd">-- ms</b> | RTT σ: <b id="rttstd">-- ms</b></div>
-      <div style="opacity:.7;margin-top:8px;font-size:12px">Based on HTTP Date header.</div>
-    </div>
-    <div class="card">
-      <div class="label">Reservation Target</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-        <select id="mode">
-          <option value="local">LOCAL time</option>
-          <option value="server">SERVER time</option>
-        </select>
-        <input id="target" placeholder="YYYY-MM-DD HH:MM:SS" size="22">
-        <label>Prefire(ms): <input id="prefire" type="number" min="0" max="2000" step="5" value="120" style="width:80px"></label>
-        <label><input id="halfrtt" type="checkbox" checked> -½ best RTT</label>
-        <button id="save">Set</button>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Accurate Seat Reservation Clock</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; img-src 'self' data:; style-src 'self' 'unsafe-inline';">
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0b1020; color:#e7ecff; margin:0; }
+    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-weight: 700; font-size: 22px; margin: 0 0 16px; display:flex; gap:8px; align-items:center; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .card { background: #131a33; border: 1px solid #1f2a52; border-radius: 12px; padding: 16px; }
+    .big { font-size: 42px; letter-spacing: 1px; }
+    .label { color: #aab7ff; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .row { display:flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    input, select { background:#0b1020; color:#e7ecff; border:1px solid #324076; border-radius:8px; padding:8px 10px; font-family: inherit; }
+    button { background:#2a3a78; color:#fff; border:0; padding:8px 12px; border-radius:8px; cursor:pointer; }
+    .countdown { font-size: 56px; font-weight: 800; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #33407a; background:#0b1020; color:#aab7ff; font-size:12px; }
+    .green { background:#052b1a; color:#c7ffda; border-color:#0f5; }
+    .warn { color:#ffd66b; }
+    .blink { animation: blink 0.8s steps(2, start) infinite; }
+    @keyframes blink { to { visibility: hidden; } }
+    @media (max-width: 780px) { .grid { grid-template-columns: 1fr; } .big { font-size: 32px; } .countdown { font-size: 40px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Accurate Seat Reservation Clock <span class="pill" id="samplestat">idle</span></h1>
+
+    <div class="grid">
+      <div class="card">
+        <div class="label">Local Time (Your PC)</div>
+        <div id="local" class="big">--:--:--.---</div>
+        <div class="label" style="margin-top:8px">Server Time (Estimated)</div>
+        <div id="server" class="big">--:--:--.---</div>
+        <div class="row" style="margin-top:10px">
+          <div>Offset (server - local): <b id="offset">-- ms</b></div>
+          <div>RTT avg/best: <b id="rtt">-- / -- ms</b></div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div>Offset σ: <b id="offstd">-- ms</b></div>
+          <div>RTT σ: <b id="rttstd">-- ms</b></div>
+        </div>
+        <div class="label" style="margin-top:8px">Last Date header</div>
+        <div id="datehdr" style="word-break:break-all;opacity:.8">—</div>
       </div>
-      <div class="label" style="margin-top:12px">Recommended Local Click Time</div>
-      <div id="clicktime" class="big">—</div>
-      <div class="label" style="margin-top:8px">Countdown</div>
-      <div id="countdown" class="countdown">—</div>
+
+      <div class="card">
+        <div class="label">Reservation Target</div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="mode">
+            <option value="local">I know the LOCAL time</option>
+            <option value="server">I know the SERVER time</option>
+          </select>
+          <input id="target" placeholder="YYYY-MM-DD HH:MM:SS" size="24" />
+          <label>Prefire(ms): <input id="prefire" type="number" min="0" max="2000" step="5" value="120" style="width:90px" /></label>
+          <label><input id="halfrtt" type="checkbox" checked /> -½ best RTT</label>
+          <button id="save">Set</button>
+        </div>
+
+        <div class="label" style="margin-top:12px">Recommended Local Click Time</div>
+        <div id="clicktime" class="big">—</div>
+        <div class="label" style="margin-top:8px">Countdown</div>
+        <div id="countdown" class="countdown">—</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="label">Debug</div>
+      <div>Samples: <span id="count">0</span></div>
     </div>
   </div>
-</div>
-<script src="renderer.js"></script>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>

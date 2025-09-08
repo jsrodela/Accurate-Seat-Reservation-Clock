@@ -1,42 +1,35 @@
 {
-  "name": "russel-clock",
-  "version": "1.0.0",
+  "name": "accurate-seat-reservation-clock",
+  "version": "0.2.0",
+  "private": true,
   "main": "main.js",
-  "type": "module",
   "scripts": {
     "dev": "electron .",
-    "build": "electron-builder -w",
-    "release": "electron-builder -w --publish never"
+    "build": "electron-builder --win portable",
+    "type": "commonjs"
   },
-  "dependencies": {
-    "electron": "^30.0.0",
-    "electron-updater": "^6.3.7"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "electron-builder": "^24.6.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.yourorg.russelclock",
-    "productName": "RusselClock",
+    "appId": "com.viaark.reserveclock",
+    "productName": "Accurate Seat Reservation Clock",
     "files": [
       "main.js",
       "preload.js",
       "renderer.html",
       "renderer.js",
-      "icon.ico",
-      "!**/*.map"
+      "icon.ico"
     ],
     "asar": true,
     "win": {
-      "icon": "icon.ico",
-      "target": "nsis",
-      "publisherName": "Your Company, Inc."
+      "target": ["portable"],
+      "icon": "icon.ico"
     },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
-      "artifactName": "RusselClock-${version}-Setup.${ext}"
+    "portable": {
+      "artifactName": "ReserveClock_Portable_${version}.exe"
     }
   }
 }

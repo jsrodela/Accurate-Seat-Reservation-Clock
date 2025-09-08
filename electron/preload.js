@@ -1,6 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
-contextBridge.exposeInMainWorld('api', {
-  getState: ()=> ipcRenderer.invoke('get-state'),
-  setConfig: (cfg)=> ipcRenderer.send('set-config', cfg),
-  onTick: (cb)=> ipcRenderer.on('tick', cb)
+const { contextBridge } = require('electron');
+contextBridge.exposeInMainWorld('env', {
+  version: '0.2.0'
 });
