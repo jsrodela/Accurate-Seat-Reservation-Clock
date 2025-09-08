@@ -1,9 +1,9 @@
-// ===== 기본 상태 =====
+// ===== 상태 =====
 let targetUrl = localStorage.getItem('reserve_target_url')
   || "https://myrussel.megastudy.net/reserve/reserve_list.asp";
 
 const samples = [];
-const MAX_SAMPLES = 240;        // ~4분 @1Hz
+const MAX_SAMPLES = 240; // ~4분 @1Hz
 let bestRTT = Number.POSITIVE_INFINITY;
 let bestOffset = 0;
 
@@ -15,16 +15,14 @@ const cfg = {
 };
 
 // ===== 유틸 =====
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 function nowMs(){ return performance.timeOrigin + performance.now(); }
 function fmtTime(ms){
   if (ms == null) return "--:--:--.---";
   const d = new Date(ms);
-  const hh = String(d.getHours()).padStart(2,'0');
-  const mm = String(d.getMinutes()).padStart(2,'0');
-  const ss = String(d.getSeconds()).padStart(2,'0');
+  const pad2 = n => String(n).padStart(2,'0');
   const ms3 = String(d.getMilliseconds()).padStart(3,'0');
-  return `${hh}:${mm}:${ss}.${ms3}`;
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${ms3}`;
 }
 function fmtDur(ms){
   if (ms == null) return "—";
@@ -39,15 +37,53 @@ function fmtDur(ms){
 function median(a){ if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
 function pstdev(a){ if(a.length<=1) return 0; const mean=a.reduce((p,c)=>p+c,0)/a.length; const v=a.reduce((p,c)=>p+(c-mean)*(c-mean),0)/a.length; return Math.sqrt(v); }
 
-// ✅ URL 정리 (보이지 않는 공백 제거 + 스킴 자동 보정)
+// ✅ URL sanitize (제로폭 공백 제거 + 스킴 보정 + 백슬래시 정규화)
 function sanitizeUrl(raw) {
   if (!raw) return "";
-  const INVIS = /[\u200B-\u200D\uFEFF\u2060]/g; // zero-width 등
+  const INVIS = /[\u200B-\u200D\uFEFF\u2060]/g;
   let s = raw.replace(INVIS, "").trim();
   s = s.replace(/\s+/g, "");
-  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) s = "https://" + s; // 스킴 없으면 https
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) s = "https://" + s;
   s = s.replace(/\\/g, "/");
   return s;
+}
+
+// ===== datetime-local 헬퍼 =====
+function getDTMs(el){
+  const v = el.valueAsNumber;
+  return Number.isFinite(v) ? v : NaN;
+}
+function setDTMs(el, ms){
+  if(!Number.isFinite(ms)) return;
+  const d = new Date(ms);
+  const pad2 = n => String(n).padStart(2,'0');
+  const val = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  el.value = val;
+}
+
+// Flexible 텍스트 파서 (로컬 기준)
+function parseFlexibleLocal(str){
+  if(!str) return NaN;
+  let s = str.trim().replace(/\s+/g,' ');
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if(m){
+    const [_,Y,M,D,h,mi,se] = m;
+    return new Date(Number(Y), Number(M)-1, Number(D), Number(h), Number(mi), Number(se||0), 0).getTime();
+  }
+  m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m){
+    const now = new Date();
+    const [_,h,mi,se] = m;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(h), Number(mi), Number(se||0), 0).getTime();
+  }
+  m = s.match(/^(\d{1,2})(\d{2})(\d{2})$/);
+  if(m){
+    const now = new Date();
+    const [_,h,mi,se] = m;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(h), Number(mi), Number(se)).getTime();
+  }
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? NaN : t;
 }
 
 // ===== 네트워킹(HEAD 샘플) =====
@@ -60,9 +96,9 @@ async function headOnce(url){
   const rtt = t3 - t0;
   if (!date) return { ok:false, rtt, dateHdr:"" };
 
-  const serverEpoch = new Date(date).getTime(); // ms
+  const serverEpoch = new Date(date).getTime();
   const midLocal = performance.timeOrigin + (t0 + t3)/2;
-  const offset = serverEpoch - midLocal;        // server - local
+  const offset = serverEpoch - midLocal; // server - local
   return { ok:true, rtt, offset, dateHdr:date, serverEpoch };
 }
 
@@ -77,7 +113,7 @@ async function sampleTick(){
   } catch {}
 }
 
-// ===== 통계/클릭시각 =====
+// ===== 통계/클릭 시각 =====
 function getStats(){
   const ok = samples;
   if (!ok.length) {
@@ -86,6 +122,7 @@ function getStats(){
   const offsets = ok.filter(s=>s.ok).map(s=>s.offset);
   const rtts    = ok.filter(s=>s.ok).map(s=>s.rtt);
   const last    = ok[ok.length-1];
+
   const nowLocal = nowMs();
   const offsetBest = bestOffset;
   const nowServer = nowLocal + offsetBest;
@@ -107,7 +144,7 @@ function parseTargetToServerMs(targetStr, mode, offset){
   if (!targetStr) return null;
   let s = targetStr.trim().replace("T"," ");
   if (s.length === 16) s += ":00";
-  const dt = new Date(s); // 로컬 타임존 해석
+  const dt = new Date(s);  // 로컬 타임존 해석
   const localMs = dt.getTime();
   if (Number.isNaN(localMs)) return null;
   return (mode === 'local') ? (localMs + offset) : localMs;
@@ -144,12 +181,11 @@ function render(){
 
 // ===== 바인딩 =====
 function bind(){
-  // URL 설정
+  // URL
   const urlInput = $('url');
   const setBtn = $('seturl');
   urlInput.value = targetUrl;
   $('currenturl').textContent = targetUrl;
-
   function applyUrl() {
     const raw = urlInput.value;
     const s = sanitizeUrl(raw);
@@ -160,8 +196,6 @@ function bind(){
       targetUrl = parsed.toString();
       localStorage.setItem('reserve_target_url', targetUrl);
       $('currenturl').textContent = targetUrl;
-
-      // 샘플/베스트 리셋
       samples.length = 0; bestRTT = Number.POSITIVE_INFINITY; bestOffset = 0;
       render();
     } catch {
@@ -171,12 +205,50 @@ function bind(){
   setBtn.onclick = applyUrl;
   urlInput.addEventListener('keypress', (ev) => { if (ev.key === 'Enter') applyUrl(); });
 
-  // 예약 타깃 설정
+  // === 예약 타깃 ===
+  const dtEl  = $('target_dt');
+  const txtEl = $('target_text');
+  const modeEl= $('mode');
+
+  // 초기값: 다음 분 정각
+  const now = new Date();
+  const nextMin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes()+1, 0, 0).getTime();
+  setDTMs(dtEl, nextMin);
+  txtEl.value = "";
+  $('tzlabel').textContent = `Local TZ: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+
+  // 프리셋 버튼
+  document.querySelectorAll('.preset').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.getAttribute('data-ms');
+      const base = Date.now();
+      if (key === 'now') setDTMs(dtEl, base);
+      else setDTMs(dtEl, base + Number(key));
+    };
+  });
+  $('roundMin').onclick = ()=>{
+    const n = Date.now();
+    const nm = Math.ceil((n+1) / 60000) * 60000;
+    setDTMs(dtEl, nm);
+  };
+
+  // 저장
   $('save').onclick = () => {
-    cfg.target_mode = $('mode').value;
-    cfg.target_iso  = $('target').value;
+    let targetMs = getDTMs(dtEl);
+    if (Number.isNaN(targetMs) && txtEl.value.trim()){
+      targetMs = parseFlexibleLocal(txtEl.value);
+    }
+    if (Number.isNaN(targetMs)){
+      alert('타깃 시각을 선택하거나 올바른 형식으로 입력하세요.');
+      return;
+    }
+    const d = new Date(targetMs);
+    const pad2 = n => String(n).padStart(2,'0');
+    cfg.target_mode = modeEl.value;
+    cfg.target_iso  = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
     cfg.prefire_ms  = parseInt(($('prefire').value || '120'), 10);
     cfg.use_best_half_rtt = $('halfrtt').checked;
+
     render();
   };
 }
@@ -185,7 +257,7 @@ function bind(){
 function start(){
   bind();
   render();
-  setInterval(async () => { await sampleTick(); render(); }, 1000); // 1Hz
+  setInterval(async () => { await sampleTick(); render(); }, 1000); // 1Hz 샘플링
   const raf = () => { render(); requestAnimationFrame(raf); };
   requestAnimationFrame(raf);
 }
