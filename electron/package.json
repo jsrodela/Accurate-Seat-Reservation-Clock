@@ -1,0 +1,42 @@
+{
+  "name": "russel-clock",
+  "version": "1.0.0",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder -w",
+    "release": "electron-builder -w --publish never"
+  },
+  "dependencies": {
+    "electron": "^30.0.0",
+    "electron-updater": "^6.3.7"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.6.0"
+  },
+  "build": {
+    "appId": "com.yourorg.russelclock",
+    "productName": "RusselClock",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.html",
+      "renderer.js",
+      "icon.ico",
+      "!**/*.map"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "icon.ico",
+      "target": "nsis",
+      "publisherName": "Your Company, Inc."
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "artifactName": "RusselClock-${version}-Setup.${ext}"
+    }
+  }
+}
