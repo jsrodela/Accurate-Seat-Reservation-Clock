@@ -37,7 +37,7 @@ npm run build    # 설치파일 dist/ 에 생성
 ```bash
 cd cli-node
 npm i
-node index.js --url https://example.com/reserve_list.asp \
+node index.js --url https://github.com/jsrodela/Accurate-Seat-Reservation-Clock \
   --mode local --target "2025-09-08 21:00:00" --prefire 120 --halfrtt
 ```
 
@@ -55,7 +55,7 @@ mkdir build && cd build
 cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
 cmake --build . --config Release
 
-./russel_clock_c.exe "https://example.com/reserve_list.asp" local "2025-09-08 21:00:00" 120 1
+./russel_clock_c.exe "https://github.com/jsrodela/Accurate-Seat-Reservation-Clock" local "2025-09-08 21:00:00" 120 1
 ```
 
 ---
